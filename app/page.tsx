@@ -3,11 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import PriceDisplay from '@/components/PriceDisplay';
 import GlowingChart from '@/components/GlowingChart';
+import PriceSkeleton from '@/components/PriceSkeleton';
+import ChartSkeleton from '@/components/ChartSkeleton';
 import { usePriceFeed } from '@/hooks/usePriceFeed';
 
 export default function Dashboard() {
   const { prices, loading, error } = usePriceFeed();
   const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     async function loadHistory() {
@@ -17,16 +20,12 @@ export default function Dashboard() {
         if (Array.isArray(data)) setHistory(data);
       } catch (e) {
         console.error('Failed to load history', e);
+      } finally {
+        setHistoryLoading(false);
       }
     }
     loadHistory();
   }, []);
-
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen text-gray-400 font-medium tracking-widest uppercase">
-      Loading Terminal...
-    </div>
-  );
 
   if (error) return (
     <div className="flex items-center justify-center min-h-screen text-rose-500 font-medium">
@@ -59,16 +58,20 @@ export default function Dashboard() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {assets.map(([symbol, data], i) => (
-          <motion.div 
-            key={symbol}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
-            <PriceDisplay symbol={symbol} current={data.current} previous={data.previous} />
-          </motion.div>
-        ))}
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <PriceSkeleton key={i} />)
+        ) : (
+          assets.map(([symbol, data], i) => (
+            <motion.div 
+              key={symbol}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+            >
+              <PriceDisplay symbol={symbol} current={data.current} previous={data.previous} />
+            </motion.div>
+          ))
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -79,11 +82,13 @@ export default function Dashboard() {
           className="space-y-4"
         >
           <h3 className="text-xl font-bold px-2">Market Momentum</h3>
-          <GlowingChart 
-            data={history} 
-            dataKey="price" 
-            color="#00FFA3" 
-          />
+          {historyLoading ? <ChartSkeleton /> : (
+            <GlowingChart 
+              data={history} 
+              dataKey="price" 
+              color="#00FFA3" 
+            />
+          )}
         </motion.div>
 
         <motion.div 
@@ -93,11 +98,13 @@ export default function Dashboard() {
           className="space-y-4"
         >
           <h3 className="text-xl font-bold px-2">Volatility Index</h3>
-          <GlowingChart 
-            data={history} 
-            dataKey="volatility" 
-            color="#FF3B69" 
-          />
+          {historyLoading ? <ChartSkeleton /> : (
+            <GlowingChart 
+              data={history} 
+              dataKey="volatility" 
+              color="#FF3B69" 
+            />
+          )}
         </motion.div>
       </div>
 

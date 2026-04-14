@@ -1,54 +1,109 @@
 'use client';
-import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Defs, LinearGradient, Stop } from 'recharts';
+import React, { useEffect, useRef } from 'react';
+import { createChart, Color, IChartApi, ISeriesApi, AreaSeries } from 'lightweight-charts';
 
 interface GlowingChartProps {
   data: any[];
   dataKey: string;
-  color: '#00FFA3' | '#FF3B69';
+  color: string;
 }
 
 export default function GlowingChart({ data, dataKey, color }: GlowingChartProps) {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
+
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        backgroundColor: 'transparent',
+        textColor: '#707a8a',
+        fontSize: 12,
+      },
+      grid: {
+        vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
+        horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+      },
+      rightPriceScale: {
+        borderVisible: false,
+      },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+      },
+    });
+
+    const areaSeries = chart.addAreaSeries({
+      lineColor: color,
+      topColor: `${color}44`, // Low opacity
+      bottomColor: `${color}00`, // Fully transparent
+      lineWidth: 2,
+      priceFormat: {
+        type: 'price',
+        precision: 2,
+      },
+    });
+
+    // Prepare data
+    const formattedData = data
+      .map(d => ({
+        time: new Date(d.time).getTime() / 1000,
+        value: d[dataKey],
+      }))
+      .sort((a, b) => a.time - b.time);
+
+    areaSeries.setData(formattedData);
+    chart.timeScale().fitContent();
+
+    chartRef.current = chart;
+    seriesRef.current = areaSeries;
+
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ 
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight 
+        });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, []);
+
+  // Update data when prop changes
+  useEffect(() => {
+    if (!seriesRef.current || !data) return;
+    
+    const formattedData = data
+      .map(d => ({
+        time: new Date(d.time).getTime() / 1000,
+        value: d[dataKey],
+      }))
+      .sort((a, b) => a.time - b.time);
+      
+    seriesRef.current.setData(formattedData);
+  }, [data, dataKey]);
+
   return (
-    <div className="glass p-6 h-full w-full min-h-[300px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-          <defs>
-            <linearGradient id={`color${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-              <stop offset="95%" stopColor={color} stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-          <XAxis 
-            dataKey="time" 
-            stroke="rgba(255,255,255,0.3)" 
-            fontSize={12} 
-            tickLine={false} 
-            axisLine={false}
-            tickFormatter={(val) => val.split(' ')[1]} 
-          />
-          <YAxis 
-            stroke="rgba(255,255,255,0.3)" 
-            fontSize={12} 
-            tickLine={false} 
-            axisLine={false} 
-          />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#161B22', borderColor: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px' }}
-            itemStyle={{ color: color }}
-          />
-          <Area 
-            type="monotone" 
-            dataKey={dataKey} 
-            stroke={color} 
-            strokeWidth={3}
-            fillOpacity={1} 
-            fill={`url(#color${dataKey})`} 
-            animationDuration={1500}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="glass p-6 h-full w-full min-h-[300px] relative overflow-hidden">
+      <div ref={chartContainerRef} className="w-full h-full" />
+      {/* Visual overlay to maintain the 'glowing' effect */}
+      <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_40px_rgba(0,0,0,0.3)]" />
     </div>
   );
 }
