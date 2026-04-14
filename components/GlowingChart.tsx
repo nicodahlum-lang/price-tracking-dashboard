@@ -100,7 +100,7 @@ export default function GlowingChart({ data, dataKey, color }: GlowingChartProps
   }, [data, dataKey]);
 
   return (
-    <div className="glass p-6 h-full w-full min-h-[300px] relative overflow-hidden">
+    <div className="liquid-glass p-6 h-full w-full min-h-[300px] relative overflow-hidden transition-all duration-300">
       <div ref={chartContainerRef} className="w-full h-full" />
       {/* Visual overlay to maintain the 'glowing' effect */}
       <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_40px_rgba(0,0,0,0.3)]" />
